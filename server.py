@@ -23,56 +23,74 @@ advertise_service(SERVER_SOCK, "SampleServer",
                       service_classes=[UUID, SERIAL_PORT_CLASS],
                       profiles=[SERIAL_PORT_PROFILE])
 
+
+print(os.path.basename(DESKTOP_PATH))
 print("Waiting for connection on RFCOMM channel %d" % port)
+
 client_sock, client_info = SERVER_SOCK.accept()
 print("Accepted connection from ", client_info)
 
 while True:
-    data = client_sock.recv(1024)
-    if len(data) == 0:
+    print("Enter command...")
+    command = client_sock.recv(1024)
+    if len(command) == 0:
         break
-    print("received [%s]" % data)
+    print("received [%s]" % command)
 
-    # do we need decode?
-    stringData = data.decode('utf-8')
+    stringData = command.decode('utf-8')
 
     if 'command' in stringData:
         if 'screenshot' in stringData:
             takeScreenshot()
             filePath = Path(DESKTOP_PATH)
-            client_sock.send("screenshot.png")
-            f = open(filePath, 'r')
+            fileSize = os.stat(DESKTOP_PATH).st_size
+            print(fileSize)
+            message = "screenshot.png " + str(fileSize)
+            client_sock.send(message)
+
+            f = open(filePath, 'rb')
             while True:
-                content = f.read(1024)
+                content = f.read(fileSize)
                 if len(content) != 0:
                     client_sock.send(content)
                 else:
                     break
             f.close()
+            print("file sent")
         elif 'file' in stringData:
             args = stringData.split()
-            print(args[1])
-            filePath = Path(args[1])
-            f = open(filePath, 'r')
+            print(args[2])
+            filePath = str(Path(args[2]))
+            fileSize = os.stat(filePath).st_size
+            fileName = os.path.basename(filePath)
+            print(fileSize)
+
+            message = fileName + " " + str(fileSize)
+            client_sock.send(message)
+            f = open(filePath, 'rb')
+            flag = 0
+
             while True:
-                content = f.read(1024)
+                content = f.read(fileSize)
                 if len(content) != 0:
-                    client_sock.send(content)
+                    flag = client_sock.send(content)
                 else:
                     break
-
             f.close()
+            print("sent " + str(flag) + " bytes")
+            print("file sent")
         elif 'recieve' in stringData:
-            # recieve file name
-            data = client_sock.recv(1024)
-            # f = open("guru99.txt", "w+")
-            while True:
-                data = client_sock.recv(1024)
-                if len(data) == 0:
-                    break
-                buffer = data.decode('utf-8')
-                # f.write(buffer)
-            # f.close()
+            print("Mockup recieve")
+            # # recieve file name
+            # data = client_sock.recv(1024)
+            # # f = open("guru99.txt", "w+")
+            # while True:
+            #     data = client_sock.recv(1024)
+            #     if len(data) == 0:
+            #         break
+            #     buffer = data.decode('utf-8')
+            #     # f.write(buffer)
+            # # f.close()
         elif 'stop' in stringData:
             break
         else:

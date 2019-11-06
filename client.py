@@ -3,6 +3,7 @@ import pyautogui
 from bluetooth import *
 from pathlib import Path, PureWindowsPath
 import sys
+import math
 
 BUFFER_SIZE = 1024
 DESKTOP_PATH = os.path.expanduser("~\Desktop\\")
@@ -14,14 +15,14 @@ def takeScreenshot():
     myScreenshot.save(filePath)
     return
 
-addr = None
+addr = "18:CF:5E:E4:AC:A7"
 
-if len(sys.argv) < 2:
-    print("no device specified.  Searching all nearby bluetooth devices for")
-    print("the SampleServer service")
-else:
-    addr = sys.argv[1]
-    print("Searching for SampleServer on %s" % addr)
+#if len(sys.argv) < 2:
+#    print("no device specified.  Searching all nearby bluetooth devices for")
+#    print("the SampleServer service")
+#else:
+#addr = sys.argv[1]
+print("Searching for SampleServer on %s" % addr)
 
 # search for the SampleServer service
 uuid = "94f39d29-7d6d-437d-973b-fba39e49d4ee"
@@ -64,12 +65,12 @@ while True:
             message = ""
             if 'screenshot' in command:
                 takeScreenshot()
-                filePath = Path(DESKTOP_PATH)
-                fileSize = os.stat(DESKTOP_PATH).st_size
+                filePath = DESKTOP_PATH + "screenshot.png"
+                fileSize = os.stat(filePath).st_size
                 message = "screenshot.png " + str(fileSize)
             elif 'file' in command:
                 args = command.split()
-                filePath = str(Path(args[2]))
+                filePath = str(args[3])
                 fileSize = os.stat(filePath).st_size
                 message = os.path.basename(filePath) + " " + str(fileSize)
 
@@ -79,13 +80,12 @@ while True:
             f = open(filePath, 'rb')
             flag = 0
             while True:
-                content = f.read(fileSize)
+                content = f.read(BUFFER_SIZE)
                 if len(content) != 0:
                     flag = sock.send(content)
                 else:
                     break
-            print("sent " + str(flag) + " bytes")
-            print("file sent")
+
             f.close()
         elif 'screenshot' in command or 'file' in command:
             fileInfo = sock.recv(BUFFER_SIZE)
@@ -96,25 +96,19 @@ while True:
             fileName = args[0]
             size = int(args[1])
             checksum = 0
-
+            data = b''
             f = open(str(DESKTOP_PATH) + str(fileName), "wb")
-
-            while size > 0:
-                if size > BUFFER_SIZE:
-                    data = sock.recv(BUFFER_SIZE)
-                    if not len(data) == BUFFER_SIZE:
-                        print("loss of data!")
-                    size -= BUFFER_SIZE
-                    checksum += BUFFER_SIZE
-                else:
-                    data = sock.recv(size)
-                    checksum += size
-                    size = 0
-
+            i = math.floor(size/BUFFER_SIZE)
+            buffi = size - BUFFER_SIZE * i
+            print(buffi)
+            while True:
+                data = sock.recv(BUFFER_SIZE)
+                if len(data) == buffi:
+                    break
                 f.write(data)
-
+            f.write(data)
             f.close()
-            print("original size - " + str(args[1]) + " vs revieved size - " + str(checksum))
+            #print("original size - " + str(args[1]) + " vs revieved size - " + str(checksum))
             print("OK")
     elif 'stop' in command:
         break

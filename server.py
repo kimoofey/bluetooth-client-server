@@ -41,7 +41,36 @@ while True:
     stringData = command.decode('utf-8')
 
     if 'command' in stringData:
-        if 'screenshot' in stringData:
+        if 'recieve' in stringData:
+            fileInfo = client_sock.recv(1024)
+            filenameAndSize = fileInfo.decode('utf-8')
+            print(filenameAndSize)
+
+            args = filenameAndSize.split()
+            filename = args[0]
+            size = int(args[1])
+            checksum = 0
+
+            f = open(str(DESKTOP_PATH) + str(filename), "wb")
+
+            while size > 0:
+                if size > 1024:
+                    data = client_sock.recv(1024)
+                    if not len(data) == 1024:
+                        print("loss of data!")
+                    size -= 1024
+                    checksum += 1024
+                else:
+                    data = client_sock.recv(size)
+                    checksum += size
+                    size = 0
+
+                f.write(data)
+
+            f.close()
+            print("original size - " + str(args[1]) + " vs revieved size - " + str(checksum))
+            print("OK")
+        elif 'screenshot' in stringData:
             takeScreenshot()
             filePath = Path(DESKTOP_PATH)
             fileSize = os.stat(DESKTOP_PATH).st_size
@@ -80,35 +109,6 @@ while True:
             f.close()
             print("sent " + str(flag) + " bytes")
             print("file sent")
-        elif 'recieve' in stringData:
-            fileInfo = client_sock.recv(1024)
-            filenameAndSize = fileInfo.decode('utf-8')
-            print(filenameAndSize)
-
-            args = filenameAndSize.split()
-            filename = args[0]
-            size = int(args[1])
-            checksum = 0
-
-            f = open(str(DESKTOP_PATH) + str(filename), "wb")
-
-            while size > 0:
-                if size > 1024:
-                    data = client_sock.recv(1024)
-                    if not len(data) == 1024:
-                        print("loss of data!")
-                    size -= 1024
-                    checksum += 1024
-                else:
-                    data = client_sock.recv(size)
-                    checksum += size
-                    size = 0
-
-                f.write(data)
-
-            f.close()
-            print("original size - " + str(args[1]) + " vs revieved size - " + str(checksum))
-            print("OK")
         elif 'stop' in stringData:
             break
         else:

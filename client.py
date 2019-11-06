@@ -89,15 +89,15 @@ while True:
             f.close()
         elif 'screenshot' in command or 'file' in command:
             fileInfo = sock.recv(BUFFER_SIZE)
-            filenameAndSize = fileInfo.decode('utf-8')
-            print(filenameAndSize)
+            fileNameAndSize = fileInfo.decode('utf-8')
+            print(fileNameAndSize)
 
-            args = filenameAndSize.split()
-            filename = args[0]
+            args = fileNameAndSize.split()
+            fileName = args[0]
             size = int(args[1])
             checksum = 0
 
-            f = open(str(DESKTOP_PATH) + str(filename), "wb")
+            f = open(str(DESKTOP_PATH) + str(fileName), "wb")
 
             while size > 0:
                 if size > BUFFER_SIZE:

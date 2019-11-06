@@ -43,15 +43,15 @@ while True:
     if 'command' in stringData:
         if 'recieve' in stringData:
             fileInfo = client_sock.recv(1024)
-            filenameAndSize = fileInfo.decode('utf-8')
-            print(filenameAndSize)
+            fileNameAndSize = fileInfo.decode('utf-8')
+            print(fileNameAndSize)
 
-            args = filenameAndSize.split()
-            filename = args[0]
+            args = fileNameAndSize.split()
+            fileName = args[0]
             size = int(args[1])
             checksum = 0
 
-            f = open(str(DESKTOP_PATH) + str(filename), "wb")
+            f = open(str(DESKTOP_PATH) + str(fileName), "wb")
 
             while size > 0:
                 if size > 1024:
@@ -70,49 +70,42 @@ while True:
             f.close()
             print("original size - " + str(args[1]) + " vs revieved size - " + str(checksum))
             print("OK")
-        elif 'screenshot' in stringData:
-            takeScreenshot()
-            filePath = Path(DESKTOP_PATH)
-            fileSize = os.stat(DESKTOP_PATH).st_size
+        else:
+            filePath = ""
+            fileSize = 0
+            message = ""
+            if 'screenshot' in stringData:
+                takeScreenshot()
+                filePath = Path(DESKTOP_PATH)
+                fileSize = os.stat(DESKTOP_PATH).st_size
+                message = "screenshot.png " + str(fileSize)
+            elif 'file' in stringData:
+                args = stringData.split()
+                filePath = str(Path(args[2]))
+                fileSize = os.stat(filePath).st_size
+                fileName = os.path.basename(filePath)
+
+                message = fileName + " " + str(fileSize)
+
             print(fileSize)
-            message = "screenshot.png " + str(fileSize)
             client_sock.send(message)
 
             f = open(filePath, 'rb')
-            while True:
-                content = f.read(fileSize)
-                if len(content) != 0:
-                    client_sock.send(content)
-                else:
-                    break
-            f.close()
-            print("file sent")
-        elif 'file' in stringData:
-            args = stringData.split()
-            print(args[2])
-            filePath = str(Path(args[2]))
-            fileSize = os.stat(filePath).st_size
-            fileName = os.path.basename(filePath)
-            print(fileSize)
-
-            message = fileName + " " + str(fileSize)
-            client_sock.send(message)
             flag = 0
-
-            f = open(filePath, 'rb')
             while True:
                 content = f.read(fileSize)
                 if len(content) != 0:
                     flag = client_sock.send(content)
                 else:
                     break
-            f.close()
             print("sent " + str(flag) + " bytes")
             print("file sent")
-        elif 'stop' in stringData:
-            break
-        else:
-            print("wrong command [%s]" % stringData)
+            f.close()
+
+    elif 'stop' in stringData:
+        break
+    else:
+        print("wrong command [%s]" % stringData)
 
 print("disconnected")
 client_sock.close()

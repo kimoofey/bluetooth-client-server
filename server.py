@@ -3,14 +3,15 @@ import pyautogui
 from pathlib import Path, PureWindowsPath
 from bluetooth import *
 
-DESKTOP_PATH = os.path.expanduser("~\Desktop\screenshot.png")
+DESKTOP_PATH = os.path.expanduser("~\Desktop\\")
 SERVER_SOCK = BluetoothSocket(RFCOMM)
 UUID = "94f39d29-7d6d-437d-973b-fba39e49d4ee"
 
 def takeScreenshot():
     myScreenshot = pyautogui.screenshot()
-    print(DESKTOP_PATH)
-    myScreenshot.save(DESKTOP_PATH)
+    filePath = DESKTOP_PATH + "screenshot.png"
+    print(filePath)
+    myScreenshot.save(filePath)
     return
 
 SERVER_SOCK.bind(("", PORT_ANY))
@@ -67,9 +68,9 @@ while True:
 
             message = fileName + " " + str(fileSize)
             client_sock.send(message)
-            f = open(filePath, 'rb')
             flag = 0
 
+            f = open(filePath, 'rb')
             while True:
                 content = f.read(fileSize)
                 if len(content) != 0:
@@ -80,17 +81,34 @@ while True:
             print("sent " + str(flag) + " bytes")
             print("file sent")
         elif 'recieve' in stringData:
-            print("Mockup recieve")
-            # # recieve file name
-            # data = client_sock.recv(1024)
-            # # f = open("guru99.txt", "w+")
-            # while True:
-            #     data = client_sock.recv(1024)
-            #     if len(data) == 0:
-            #         break
-            #     buffer = data.decode('utf-8')
-            #     # f.write(buffer)
-            # # f.close()
+            fileInfo = client_sock.recv(1024)
+            filenameAndSize = fileInfo.decode('utf-8')
+            print(filenameAndSize)
+
+            args = filenameAndSize.split()
+            filename = args[0]
+            size = int(args[1])
+            checksum = 0
+
+            f = open(str(DESKTOP_PATH) + str(filename), "wb")
+
+            while size > 0:
+                if size > 1024:
+                    data = client_sock.recv(1024)
+                    if not len(data) == 1024:
+                        print("loss of data!")
+                    size -= 1024
+                    checksum += 1024
+                else:
+                    data = client_sock.recv(size)
+                    checksum += size
+                    size = 0
+
+                f.write(data)
+
+            f.close()
+            print("original size - " + str(args[1]) + " vs revieved size - " + str(checksum))
+            print("OK")
         elif 'stop' in stringData:
             break
         else:

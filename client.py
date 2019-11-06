@@ -6,6 +6,13 @@ import sys
 
 DESKTOP_PATH = os.path.expanduser("~\Desktop\\")
 
+def takeScreenshot():
+    myScreenshot = pyautogui.screenshot()
+    filePath = DESKTOP_PATH + "screenshot.png"
+    print(filePath)
+    myScreenshot.save(filePath)
+    return
+
 addr = None
 
 if len(sys.argv) < 2:
@@ -37,35 +44,91 @@ sock.connect((host, port))
 print("connected.  type stuff")
 
 while True:
-    data = input()
-    if len(data) == 0:
+    command = input()
+    if len(command) == 0:
         break
 
-    sock.send(data)
-    command = sock.recv(1024)
-    filenameAndSize = command.decode('utf-8')
-    print(filenameAndSize)
+    sock.send(command)
 
-    args = filenameAndSize.split()
-    filename = args[0]
-    size = int(args[1])
-    checksum = 0
+    # command screenshot
+    # command file
+    # command recieve file
+    # command recieve screenshot
+    # stop
 
-    f = open(str(DESKTOP_PATH) + str(filename), "wb")
+    if 'command' in command:
+        if 'recieve' in command:
+            if 'screenshot' in command:
+                takeScreenshot()
+                filePath = Path(DESKTOP_PATH)
+                fileSize = os.stat(DESKTOP_PATH).st_size
+                print(fileSize)
+                message = "screenshot.png " + str(fileSize)
+                sock.send(message)
 
-    while size > 0:
-        if size > 1024:
-            data = sock.recv(1024)
-            if not len(data) == 1024:
-                print("loss of data!")
-            size -= 1024
-            checksum += 1024
-        else:
-            data = sock.recv(size)
-            checksum += size
-            size = 0
-        f.write(data)
-    f.close()
-    print("original size - " + str(args[1]) + " vs revieved size - " + str(checksum))
-    print("OK")
+                f = open(filePath, 'rb')
+                while True:
+                    content = f.read(fileSize)
+                    if len(content) != 0:
+                        sock.send(content)
+                    else:
+                        break
+                f.close()
+                print("file sent")
+            elif 'file' in command:
+                args = command.split()
+                print(args[2])
+                filePath = str(Path(args[2]))
+                fileSize = os.stat(filePath).st_size
+                fileName = os.path.basename(filePath)
+                print(fileSize)
+
+                message = fileName + " " + str(fileSize)
+                sock.send(message)
+                flag = 0
+
+                f = open(filePath, 'rb')
+                while True:
+                    content = f.read(fileSize)
+                    if len(content) != 0:
+                        flag = sock.send(content)
+                    else:
+                        break
+                f.close()
+                print("sent " + str(flag) + " bytes")
+                print("file sent")
+        elif 'screenshot' in command or 'file' in command:
+            fileInfo = sock.recv(1024)
+            filenameAndSize = fileInfo.decode('utf-8')
+            print(filenameAndSize)
+
+            args = filenameAndSize.split()
+            filename = args[0]
+            size = int(args[1])
+            checksum = 0
+
+            f = open(str(DESKTOP_PATH) + str(filename), "wb")
+
+            while size > 0:
+                if size > 1024:
+                    data = sock.recv(1024)
+                    if not len(data) == 1024:
+                        print("loss of data!")
+                    size -= 1024
+                    checksum += 1024
+                else:
+                    data = sock.recv(size)
+                    checksum += size
+                    size = 0
+
+                f.write(data)
+
+            f.close()
+            print("original size - " + str(args[1]) + " vs revieved size - " + str(checksum))
+            print("OK")
+    elif 'stop' in command:
+        break
+    else:
+        continue
+
 sock.close()

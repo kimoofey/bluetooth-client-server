@@ -1,5 +1,10 @@
+import os
+import pyautogui
 from bluetooth import *
+from pathlib import Path, PureWindowsPath
 import sys
+
+DESKTOP_PATH = os.path.expanduser("~\Desktop\\")
 
 addr = None
 
@@ -34,5 +39,13 @@ while True:
     data = input()
     if len(data) == 0: break
     sock.send(data)
-
+    filename = sock.recv(1024)
+    f = open(str(DESKTOP_PATH + filename), "rw")
+    while True:
+        data = sock.recv(1024)
+        if len(data) == 0:
+            break
+        buffer = data.decode('utf-8')
+        f.write(buffer)
+        f.close()
 sock.close()

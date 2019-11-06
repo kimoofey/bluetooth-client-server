@@ -4,6 +4,7 @@ from bluetooth import *
 from pathlib import Path, PureWindowsPath
 import sys
 
+BUFFER_SIZE = 1024
 DESKTOP_PATH = os.path.expanduser("~\Desktop\\")
 
 def takeScreenshot():
@@ -58,47 +59,36 @@ while True:
 
     if 'command' in command:
         if 'recieve' in command:
+            filePath = ""
+            fileSize = 0
+            message = ""
             if 'screenshot' in command:
                 takeScreenshot()
                 filePath = Path(DESKTOP_PATH)
                 fileSize = os.stat(DESKTOP_PATH).st_size
-                print(fileSize)
                 message = "screenshot.png " + str(fileSize)
-                sock.send(message)
-
-                f = open(filePath, 'rb')
-                while True:
-                    content = f.read(fileSize)
-                    if len(content) != 0:
-                        sock.send(content)
-                    else:
-                        break
-                f.close()
-                print("file sent")
             elif 'file' in command:
                 args = command.split()
-                print(args[2])
                 filePath = str(Path(args[2]))
                 fileSize = os.stat(filePath).st_size
-                fileName = os.path.basename(filePath)
-                print(fileSize)
+                message = os.path.basename(filePath) + " " + str(fileSize)
 
-                message = fileName + " " + str(fileSize)
-                sock.send(message)
-                flag = 0
+            print(fileSize)
+            sock.send(message)
 
-                f = open(filePath, 'rb')
-                while True:
-                    content = f.read(fileSize)
-                    if len(content) != 0:
-                        flag = sock.send(content)
-                    else:
-                        break
-                f.close()
-                print("sent " + str(flag) + " bytes")
-                print("file sent")
+            f = open(filePath, 'rb')
+            flag = 0
+            while True:
+                content = f.read(fileSize)
+                if len(content) != 0:
+                    flag = sock.send(content)
+                else:
+                    break
+            print("sent " + str(flag) + " bytes")
+            print("file sent")
+            f.close()
         elif 'screenshot' in command or 'file' in command:
-            fileInfo = sock.recv(1024)
+            fileInfo = sock.recv(BUFFER_SIZE)
             filenameAndSize = fileInfo.decode('utf-8')
             print(filenameAndSize)
 
@@ -110,12 +100,12 @@ while True:
             f = open(str(DESKTOP_PATH) + str(filename), "wb")
 
             while size > 0:
-                if size > 1024:
-                    data = sock.recv(1024)
-                    if not len(data) == 1024:
+                if size > BUFFER_SIZE:
+                    data = sock.recv(BUFFER_SIZE)
+                    if not len(data) == BUFFER_SIZE:
                         print("loss of data!")
-                    size -= 1024
-                    checksum += 1024
+                    size -= BUFFER_SIZE
+                    checksum += BUFFER_SIZE
                 else:
                     data = sock.recv(size)
                     checksum += size

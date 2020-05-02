@@ -1,12 +1,11 @@
 import pyautogui
-from pathlib import Path, PureWindowsPath
 from bluetooth import *
 import sys
 import math
 
 BUFFER_SIZE = 1024
 DESKTOP_PATH = os.path.expanduser("~\Desktop\\")
-sock = BluetoothSocket(RFCOMM)
+SOCK = BluetoothSocket(RFCOMM)
 UUID = "94f39d29-7d6d-437d-973b-fba39e49d4ee"
 
 def takeScreenshot():
@@ -16,19 +15,19 @@ def takeScreenshot():
     return
 
 def serverPart():
-    sock.bind(("", PORT_ANY))
-    sock.listen(1)
+    SOCK.bind(("", PORT_ANY))
+    SOCK.listen(1)
 
-    port = sock.getsockname()[1]
+    port = SOCK.getsockname()[1]
 
-    advertise_service(sock, "SampleServer",
+    advertise_service(SOCK, "SampleServer",
                       service_id=UUID,
                       service_classes=[UUID, SERIAL_PORT_CLASS],
                       profiles=[SERIAL_PORT_PROFILE])
 
     print("Waiting for connection on RFCOMM channel %d" % port)
 
-    serverSock, clientInfo = sock.accept()
+    serverSock, clientInfo = SOCK.accept()
     print("Accepted connection from ", clientInfo)
 
     while True:
@@ -38,18 +37,18 @@ def serverPart():
             break
         print("received [%s]" % command)
 
-        stringData = command.decode('utf-8')
+        stringData = command.decode("utf-8")
 
-        if 'command' in stringData:
+        if "command" in stringData:
             filePath = ""
             fileSize = 0
             message = ""
-            if 'screenshot' in stringData:
+            if "screenshot" in stringData:
                 takeScreenshot()
                 filePath = DESKTOP_PATH + "screenshot.png"
                 fileSize = os.stat(filePath).st_size
                 message = "screenshot.png " + str(fileSize)
-            elif 'file' in stringData:
+            elif "file" in stringData:
                 args = stringData.split()
                 filePath = str(args[2])
                 fileSize = os.stat(filePath).st_size
@@ -59,7 +58,7 @@ def serverPart():
             print("file size - " + str(fileSize))
             serverSock.send(message)
 
-            f = open(filePath, 'rb')
+            f = open(filePath, "rb")
 
             while True:
                 content = f.read(BUFFER_SIZE)
@@ -72,14 +71,14 @@ def serverPart():
             print("File transfered!")
             f.close()
 
-        elif 'stop' in stringData:
+        elif "stop" in stringData:
             break
         else:
             print("wrong command [%s]" % stringData)
 
     print("disconnected")
     serverSock.close()
-    sock.close()
+    SOCK.close()
     return
 
 def clientPart():
@@ -93,11 +92,10 @@ def clientPart():
     # addr = sys.argv[1]
     print("Searching for SampleServer on %s" % addr)
 
-    # search for the SampleServer service
     service_matches = find_service(uuid=UUID, address=addr)
 
     if len(service_matches) == 0:
-        print("couldn't find the SampleServer service =(")
+        print("Couldn't find the SampleServer service.")
         sys.exit(0)
 
     first_match = service_matches[0]
@@ -105,27 +103,27 @@ def clientPart():
     name = first_match["name"]
     host = first_match["host"]
 
-    print("connecting to \"%s\" on %s" % (name, host))
+    print("Connecting to \"%s\" on %s" % (name, host))
 
-    sock.connect((host, port))
+    SOCK.connect((host, port))
 
-    print("connected.  type stuff")
+    print("Connected.  Type stuff")
 
     while True:
         command = input()
         if len(command) == 0:
             break
 
-        sock.send(command)
+        SOCK.send(command)
 
         # command screenshot
         # command file
         # stop
 
-        if 'command' in command:
-            if 'screenshot' in command or 'file' in command:
-                fileInfo = sock.recv(BUFFER_SIZE)
-                fileNameAndSize = fileInfo.decode('utf-8')
+        if "command" in command:
+            if "screenshot" in command or "file" in command:
+                fileInfo = SOCK.recv(BUFFER_SIZE)
+                fileNameAndSize = fileInfo.decode("utf-8")
                 print(fileNameAndSize)
 
                 args = fileNameAndSize.split()
@@ -137,7 +135,7 @@ def clientPart():
                 print(buffi)
                 
                 while True:
-                    data = sock.recv(BUFFER_SIZE)
+                    data = SOCK.recv(BUFFER_SIZE)
                     if len(data) == buffi:
                         f.write(data)
                         break
@@ -145,19 +143,19 @@ def clientPart():
                 f.close()
                 
                 print("File transfered!")
-        elif 'stop' in command:
+        elif "stop" in command:
             break
         else:
             continue
 
-    sock.close()
+    SOCK.close()
     return
 
 while True:
     chooseRole = input()
     if chooseRole == "server":
         serverPart()
-    elif chooseRole == 'client':
+    elif chooseRole == "client":
         clientPart()
     else:
         "Wrong role! Try again"
